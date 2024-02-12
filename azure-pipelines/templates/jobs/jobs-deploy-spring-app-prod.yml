@@ -1,0 +1,78 @@
+parameters:
+  - name : jobName
+    type : string 
+  - name : dependsOn
+    type : object
+  - name : ignoreError
+    type : boolean 
+  - name : serviceConnection
+    type : string 
+  - name : resourceGroupName
+    type : string
+  - name : appName
+    type : string
+  - name : springAppServiceName
+    type : string
+  - name : targetArtifact
+    type: string
+  - name : buildType
+    type : string
+  - name : projectId
+    type : string 
+  - name : definitionId
+    type: string 
+  - name : artifactName 
+    type: string 
+  - name : buildVersionToDownload
+    type: string
+
+jobs:
+  - job: ${{parameters.jobName}}
+    displayName: "Job: Deploy App - ${{parameters.appName}}"
+    dependsOn: ${{parameters.dependson}}
+    #continueOnError: ${{parameters.ignoreError}}
+    condition : always()
+    steps:
+    - task: AzureCLI@2
+      displayName: Install Azure CLI Spring Extension
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptLocation: inlineScript
+        scriptType: bash
+        inlineScript: |
+          set -eu
+          az extension add --name spring -y
+          az spring list -o table
+        addSpnToEnvironment: true 
+    - task: DownloadPipelineArtifact@2
+      displayName: "download build-release artifacts"
+      inputs:
+        buildType: ${{parameters.buildType}}
+        project: ${{parameters.projectId}}
+        definition: ${{parameters.definitionId}}
+        buildVersionToDownload: ${{parameters.buildVersionToDownload}}
+        artifactName: ${{parameters.artifactName}}
+        targetPath: '$(Pipeline.Workspace)'
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Created Staging Deployment "
+          az spring app deployment create -n staging \
+            --app ${{parameters.appName}}  -g $(resourceGroupName) \
+            -s ${{parameters.springAppServiceName}} \
+            --artifact-path $(Pipeline.Workspace)/${{parameters.targetArtifact}} \
+            --runtime-version "java_17"  \
+            --instance-count 1 --cpu 2 --memory 2Gi 
+
+          echo 'Deploying Spring App -- ${{parameters.appName}} to staging'
+          az spring app deploy \
+            --resource-group ${{parameters.resourceGroupName}} \
+            --service ${{parameters.springAppServiceName}} \
+            --name ${{parameters.appName}} \
+            --deployment staging \
+            --artifact-path $(Pipeline.Workspace)/${{parameters.targetArtifact}} 
+        addSpnToEnvironment: true 
+# --env SPRING_PROFILES_ACTIVE=postgres

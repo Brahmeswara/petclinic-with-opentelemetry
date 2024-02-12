@@ -1,0 +1,55 @@
+# Maven
+# Build your Java project and run tests with Apache Maven.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/java
+
+trigger:
+  branches:
+    include:
+    - azure
+  paths:
+    include:
+    - spring-petclinic-api-gateway/*
+
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Build
+    jobs:
+      - job: 'MavenBuild'
+        steps:
+          - task: Maven@3
+            inputs:
+              mavenPomFile: 'pom.xml'
+              mavenOptions: '-Xmx3072m'
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.17'
+              jdkArchitectureOption: 'x64'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              codeCoverageToolOption: 'JaCoCo'
+              pmdRunAnalysis: true
+              checkStyleRunAnalysis: true
+              goals: '--pl spring-petclinic-api-gateway -am -q clean package'
+#  - stage: Copy
+#    jobs:
+#      - job: Copy_File
+#        dependsOn: MavenBuild
+#        steps:
+          - task: CopyFiles@2
+            inputs:
+              SourceFolder: spring-petclinic-api-gateway/target
+              Contents: '**/*.jar'
+              TargetFolder: '${Build.ArtifactStagingDirectory}'
+
+#  - stage: Publish
+#    jobs:
+#      - job: Publish_Artifact
+#        steps:
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '${Build.ArtifactStagingDirectory}'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'  

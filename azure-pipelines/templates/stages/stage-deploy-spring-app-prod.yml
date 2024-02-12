@@ -1,0 +1,76 @@
+# Deploy Petclinic Spring App Template
+parameters:
+  - name : stageName
+    type : string
+  - name : dependson
+    type : object
+  - name : serviceConnection
+    type : string
+  - name : namePrefix
+    type : string
+  - name : buildType 
+    type : string 
+  - name : projectId 
+    type : string 
+  - name : definitionId
+    type : string
+  - name : buildVersionToDownload
+    type : string
+  - name : artifactName 
+    type : string
+  - name : resourceGroupName
+    type : string
+  - name : springAppName 
+    type: string
+  - name : appName 
+    type: string
+  - name : targetArtifact
+    type : string 
+  - name : skipAppService
+    type : boolean
+
+stages:
+- stage: ${{parameters.stageName}}
+  displayName: "Stage: Deploy Spring App ${{parameters.appName}}"
+  dependsOn: ${{parameters.dependson}}
+  #condition: eq('${{ parameters.skipAppService }}', true)
+  jobs:
+#    - template: ../jobs/jobs-create-spring-appservice.yml
+#      parameters:
+#        jobName: create_springappservice
+#        dependson: []
+#        ignoreError: false
+#        skipAppService : ${{parameters.skipAppService}}
+#        serviceConnection: ${{parameters.serviceConnection}}
+#        resourceGroupName: ${{parameters.resourceGroupName}}
+#        springAppServiceName: ${{parameters.springAppName}}
+
+    - template: ../jobs/jobs-create-spring-app.yml
+      parameters:
+        jobName: create_app
+        dependson: []
+        ignoreError: true
+        serviceConnection: ${{parameters.serviceConnection}}
+        appName: ${{parameters.appName}}
+        resourceGroupName: ${{parameters.resourceGroupName}}
+        springAppServiceName: ${{parameters.springAppName}}
+        instanceCount: 1
+        runtime: "java_17"
+        cpu: 2
+        memory: 2Gi   
+
+    - template: ../jobs/jobs-deploy-spring-app-prod.yml
+      parameters:
+        jobName: deploy_app
+        dependson: [create_app]
+        ignoreError: false
+        serviceConnection: ${{parameters.serviceConnection}}
+        appName: ${{parameters.appName}}
+        resourceGroupName: ${{parameters.resourceGroupName}}
+        springAppServiceName: ${{parameters.springAppName}}
+        targetArtifact: ${{parameters.targetArtifact}}
+        buildType: ${{parameters.buildType}}
+        projectId: ${{parameters.projectId}}
+        definitionId: ${{parameters.definitionId}}
+        buildVersionToDownload: ${{parameters.buildVersionToDownload}}
+        artifactName: ${{parameters.artifactName}}

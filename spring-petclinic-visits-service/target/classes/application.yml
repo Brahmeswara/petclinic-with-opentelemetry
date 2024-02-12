@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: visits-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888/}
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+    import: configserver:http://config-server:8888
+
+
+---
+spring:
+  config:
+    activate:
+      on-profile: postgres
+  datasource:
+    url: jdbc:postgresql://c-pet-cluster.bib26vg7vlnglb.postgres.cosmos.azure.com:5432/petclinic?sslmode=require
+    username: citus
+    password: petclinic1$
+    continue-on-error: true
+  sql:
+    init:
+      schema-locations: classpath*:db/postgres/schema.sql
+      data-locations: classpath*:db/postgres/data.sql
+      mode: always
+  jpa:
+    open-in-view: false
+    show-sql: true
+    hibernate:
+      ddl-auto: none
+
+

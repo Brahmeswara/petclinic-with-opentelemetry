@@ -1,0 +1,81 @@
+# Template to build and publish artifact
+parameters:
+  - name : stageName
+    type : string 
+  - name : pomPath 
+    type : string
+  - name : buildGoals 
+    type : string 
+  - name : jdkVersion 
+    type : string 
+  - name : unitTestGoals 
+    type : string 
+  - name : unitTestRunTitleName
+    type : string
+
+stages :
+  - stage: ${{parameters.stageName}}
+    displayName: "Stage: Build ${{parameters.stageName}}"
+    jobs:
+    - job: build_project
+      steps:
+      - task: Maven@3
+        name : MavenBuild
+        displayName: "Maven Clean and Package"
+        inputs:
+          mavenPomFile: ${{parameters.pomPath }}
+          goals: ${{parameters.buildGoals}}
+          options: '-Denv=cloud'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: ${{parameters.jdkVersion}}
+          mavenVersionOption: 'Default'
+          mavenAuthenticateFeed: false
+          effectivePomSkip: false
+          sonarQubeRunAnalysis: false
+
+  - stage: unit_test
+    displayName: "Stage: Run Unit Tests "
+    jobs:
+    - job: unit_test
+      steps:
+      - task: Maven@3
+        name : UnitTest
+        displayName: "Run unit tests"
+        inputs:
+          mavenPomFile: ${{parameters.pomPath }}
+          goals: ${{parameters.unitTestGoals }}
+          options: '-Denv=cloud'
+          publishJUnitResults: true
+          testResultsFiles: '**/surefire-reports/TEST-*.xml'
+          testRunTitle: ${{parameters.unitTestRunTitleName}}
+          codeCoverageToolOption: 'JaCoCo'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: ${{parameters.jdkVersion}}
+          mavenVersionOption: 'Default'
+          mavenAuthenticateFeed: false
+          effectivePomSkip: false
+          sonarQubeRunAnalysis: false
+
+      - task: CopyFiles@2
+        displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+        inputs:
+          SourceFolder: '$(system.defaultworkingdirectory)'
+          Contents: '**/target/*.?(war|jar)'
+          TargetFolder: '$(build.artifactstagingdirectory)'
+        condition: succeededOrFailed()
+
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact'
+        inputs:
+          PathtoPublish: '$(build.artifactstagingdirectory)'
+          ArtifactName: drop
+        condition: succeededOrFailed()
+
+  - stage: publish_artifacts
+    displayName: "Stage - Publish Artifacts"
+    jobs:
+    - job: publish_artifacts
+      steps:
+        - download : current 
+          artifact: drop
+        - bash: ls -lt $(Pipeline.Workspace)/drop

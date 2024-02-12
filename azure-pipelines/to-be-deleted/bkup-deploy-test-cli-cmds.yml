@@ -1,0 +1,181 @@
+# Deploy PC spring app to QA env
+name: Deploy PC spring App to QA WNV
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-PROD-ENVIRONMENT
+
+#resources:
+#  pipelines:
+#  - pipeline : deploy_qa_pc
+#    source  : deploy-pc-api-gateway-dev-v2
+#    trigger : true
+
+stages:
+#  - stage : approve_qa_release
+#    displayName : "Deploy to QA Environment"
+#    jobs:
+#    - deployment : qa_release 
+#      environment : qa
+
+  - stage: test_cli_commands
+    displayName: "Stage: Test CLI Commands"
+    dependsOn: []
+    jobs:
+    - job: test_bicep
+      displayName: "Job: Test Bicep"
+      dependsOn: []
+      steps:
+        #- checkout: self
+        - task: AzureCLI@2
+          displayName : 'create asa instance'
+          inputs:
+            azureSubscription: 'JB'
+            scriptType: "bash"
+            scriptLocation: "inlineScript"
+            inlineScript: |
+              az deployment sub create --name 'create-asa' --location='westus2'  --template-file 'azure-pipelines/iac/asa.bicep'   --parameters location='westus2' resourceGroupName='rg_fedex_west_us' asaInstanceName='test-spring-app-asa'
+            #workingDirectory: ${{parameters.workingDirectory}}
+        - task: DownloadPipelineArtifact@2
+          displayName: "download build-release artifacts"
+          inputs:
+            buildType: 'specific'
+            project: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+            definition: '44'
+            buildVersionToDownload: 'latest'
+            artifactName: 'drop'
+            targetPath: '$(Pipeline.Workspace)'
+        - task: AzureCLI@2
+          displayName : 'create spring app'
+          inputs:
+            azureSubscription: 'JB'
+            scriptType: "bash"
+            scriptLocation: "inlineScript"
+            #workingDirectory: azure-pipelines
+            inlineScript: |
+                echo 'Deploying Spring App -- api-gateway'
+                #echo 'Creating Spring App -- api-gateway in rg  $(resourceGroupName)'
+                az spring app create -n api-gateway -g rg_fedex_west_us \
+                  -s test-spring-app-asa --runtime-version "java_17" \
+                  --instance-count 1 --cpu 2 --memory 2Gi \
+                  --system-assigned true --assign-endpoint true
+
+                echo 'Deploying Spring App -- api-gateway'
+                az spring app deploy \
+                  --resource-group rg_fedex_west_us \
+                  --service test-spring-app-asa  \
+                  --name api-gateway \
+                  --artifact-path "$(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar" \
+                  --env SPRING_PROFILES_ACTIVE=postgres
+                  
+#        - task: AzureCLI@2
+#          displayName : 'create spring app'
+#          inputs:
+#            azureSubscription: 'JB'
+#            scriptType: "bash"
+#            scriptLocation: "inlineScript"
+#            workingDirectory: azure-pipelines
+#            inlineScript: |
+#              echo "artifact path: $(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar"
+#              ls -lt $(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar
+#              echo 'pl ws: $(Pipeline.Workspace)'
+#              ls -lt $(Pipeline.Workspace)
+#              echo "pwd: "
+#              pwd
+#              echo "relative:"
+#              ls -lt ../../spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar
+#              az extension add --name spring --upgrade
+#              #echo "sw: $(System.workingDirectory)"
+#              az deployment sub create --name 'create-app' --location='westus2' \
+#                --template-file 'iac/api-gateway-app.bicep'  \
+#                --parameters location='westus2' resourceGroupName='rg_fedex_west_us' \
+#                asaInstanceName='test-spring-app-asa' appName='api-gateway' \
+#                artifactRelativePath='..\..\spring-petclinic-api-gateway\target\api-gateway-3.0.1.jar'
+
+            #workingDirectory: ${{parameters.workingDirectory}}
+
+#    - job: test_cli_commands
+#      displayName: "Test CLI Commands"
+#      dependsOn: []
+#      steps:
+#        - task: AzureCLI@2
+#          inputs:
+#            azureSubscription: 'JB'
+#            scriptType: 'bash'
+#            scriptLocation: 'inlineScript'
+#            inlineScript: |
+#                echo 'Creating Spring App service -- $()'
+#              # az spring create \
+#              #   --name pc-demo-prod-appservice \
+#              #   --resource-group $(resourceGroupName) 
+#              # echo "executing az spring app set-deployment -d staging -n api-gateway  -g $(resourceGroupName) -s pc-spring-app-instance "
+#              # az spring app set-deployment -d staging \
+#              #  -n api-gateway  -g $(resourceGroupName) -s pc-spring-app-instance-prod
+#
+#         - task: DownloadPipelineArtifact@2
+#           displayName: "download build-release artifacts"
+#           inputs:
+#             buildType: 'specific'
+#             project: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+#             definition: '44'
+#             buildVersionToDownload: 'latest'
+#             artifactName: 'drop'
+#             targetPath: '$(Pipeline.Workspace)'
+#         - task: AzureCLI@2
+#           inputs:
+#             azureSubscription: 'JB'
+#             scriptType: 'bash'
+#             scriptLocation: 'inlineScript'
+#             inlineScript: |
+#               # echo 'Creating Spring App service -- $()'
+#               # az spring create \
+#               #   --name pc-demo-prod-appservice \
+#               #   --resource-group $(resourceGroupName) 
+#
+#                #echo 'Creating Spring App -- api-gateway in rg  $(resourceGroupName)'
+#                az spring app create -n api-gateway -g $(resourceGroupName) \
+#                  -s pc-demo-prod-appservice --runtime-version "java_17" \
+#                  --instance-count 1 --cpu 2 --memory 2Gi \
+#                  --system-assigned true --assign-endpoint true
+#
+#                echo 'Deploying Spring App -- api-gateway'
+#                az spring app deploy \
+#                  --resource-group $(resourceGroupName) \
+#                  --service pc-demo-prod-appservice \
+#                  --name api-gateway \
+#                  --artifact-path "$(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar" \
+#                  --env SPRING_PROFILES_ACTIVE=postgres
+#
+#                #echo "Created Staging"
+#                az spring app deployment create -n staging \
+#                  --app api-gateway  -g $(resourceGroupName) -s pc-demo-prod-appservice \
+#                  --artifact-path "$(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar" \
+#                  --runtime-version "java_17" --instance-count 1 --cpu 2 --memory 2Gi #
+#
+#                echo 'Deploying to staging'
+#                az spring app deploy \
+#                  --resource-group $(resourceGroupName) \
+#                  --service pc-demo-prod-appservice \
+#                  --name api-gateway \
+#                  --deployment staging \
+#                  --artifact-path "$(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar" \
+#                  --env SPRING_PROFILES_ACTIVE=postgres
+#                
+#                ls -lt "$(Pipeline.Workspace)/spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar"
+#
+# sample code
+#- job: waitForValidation
+#  dependsOn: Deployment to your Environment
+#  displayName: 'Wait for approval or validation to swap slots'
+#  timeoutInMinutes: 35780 
+#  pool: server
+#  steps:
+#  - task: ManualValidation@0
+#    displayName: 'Wait for approval to swap slots'
+#    inputs:
+#      notifyUsers: 
+#          abcd@xyz.com 

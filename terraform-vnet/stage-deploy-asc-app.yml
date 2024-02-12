@@ -1,0 +1,69 @@
+name: Stage-Deploy Resource
+
+variables:
+- group: azure-environment-terraform
+- name: DeploymentName
+  value: d$(Build.BuildId)
+
+parameters:
+- name: spring_cloud_name
+  default: $(SPRING_CLOUD_NAME)
+- name: application_name
+  default: $(application.name)
+  
+trigger: none
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+resources:
+  pipelines:
+  - pipeline: build_from_github
+    source: Build from GitHub
+    trigger: none
+
+stages: 
+- stage: deploy_staging
+  displayName: Staging Deployment
+  jobs:
+  - job: deploy_staging
+    displayName: Staging Deployment
+    steps:
+    - download: build_from_github
+      artifact: build
+
+    - task: AzureSpringCloud@0
+      continueOnError: true
+      inputs:
+        azureSubscription: '$(SERVICE_CONNECTION_NAME)'
+        Action: 'Delete Staging Deployment'
+        AppName: '${{parameters.application_name}}'
+        AzureSpringCloud: '${{parameters.spring_cloud_name}}'
+        
+
+    - task: AzureSpringCloud@0
+      timeoutInMinutes: 20
+      inputs:
+        azureSubscription: '$(SERVICE_CONNECTION_NAME)'
+        Action: 'Deploy'
+        AzureSpringCloud: '${{parameters.spring_cloud_name}}'
+        AppName: '${{parameters.application_name}}'
+        UseStagingDeployment: false
+        DeploymentName: '$(DeploymentName)'
+        CreateNewDeployment: true
+        Package: '$(PIPELINE.WORKSPACE)/build_from_github/build/*${{parameters.application_name}}*.jar'
+    
+- stage: move_to_production
+  displayName: Move to Production
+  jobs:
+  - job: move_to_production
+    displayName: Move to Production
+    steps:
+    - task: AzureSpringCloud@0
+      inputs:
+        azureSubscription: '$(SERVICE_CONNECTION_NAME)'
+        Action: 'Set Production'
+        AzureSpringCloud: '${{parameters.spring_cloud_name}}'
+        AppName: '${{parameters.application_name}}'
+        UseStagingDeployment: false
+        DeploymentName: '$(DeploymentName)'

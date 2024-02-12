@@ -1,0 +1,8 @@
+-------------------------------------------------------------------------------
+Test set: org.springframework.samples.petclinic.api.application.VisitsServiceClientIntegrationTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.101 s <<< FAILURE! - in org.springframework.samples.petclinic.api.application.VisitsServiceClientIntegrationTest
+getVisitsForPets_withAvailableVisitsService  Time elapsed: 0.101 s  <<< ERROR!
+java.lang.NullPointerException: Cannot invoke "io.opentelemetry.api.trace.Tracer.spanBuilder(String)" because "this.tracer" is null
+	at org.springframework.samples.petclinic.api.application.VisitsServiceClientIntegrationTest.getVisitsForPets_withAvailableVisitsService(VisitsServiceClientIntegrationTest.java:45)
+

@@ -1,0 +1,76 @@
+# Demo build pipeline for api-gateway
+
+trigger:
+  branches:
+    include:
+    - azure
+  paths:
+    include:
+    - spring-petclinic-api-gateway/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: build_petclinic
+    displayName: "Stage - Build Petclinic"
+    jobs:
+    - job: build
+      steps:
+      - task: Maven@3
+        name : MavenBuild
+        displayName: Maven Clean and Package
+        inputs:
+          mavenPomFile: 'pom.xml'
+          goals: '--pl spring-petclinic-api-gateway -q clean package'
+          options: '-Denv=cloud'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: '1.17'
+          mavenVersionOption: 'Default'
+          mavenAuthenticateFeed: false
+          effectivePomSkip: false
+          sonarQubeRunAnalysis: false
+
+  - stage: unit_test
+    displayName: "Stage - Unit Testing"
+    jobs:
+    - job: unit_test
+      steps:
+      - task: Maven@3
+        name : UnitTest
+        displayName: Maven Test
+        inputs:
+          mavenPomFile: 'pom.xml'
+          goals: '--pl spring-petclinic-api-gateway  test'
+          options: '-Denv=cloud'
+          publishJUnitResults: true
+          testResultsFiles: '**/surefire-reports/TEST-*.xml'
+          testRunTitle: 'Unit Test'
+          codeCoverageToolOption: 'JaCoCo'
+          javaHomeOption: 'JDKVersion'
+          jdkVersionOption: '1.17'
+          mavenVersionOption: 'Default'
+          mavenAuthenticateFeed: false
+          effectivePomSkip: false
+          sonarQubeRunAnalysis: false
+      - task: CopyFiles@2
+        displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+        inputs:
+          SourceFolder: '$(system.defaultworkingdirectory)'
+          Contents: '**/target/*.?(war|jar)'
+          TargetFolder: '$(build.artifactstagingdirectory)'
+        condition: succeededOrFailed()
+      - task: PublishBuildArtifacts@1
+        displayName: 'Publish Artifact'
+        inputs:
+          PathtoPublish: '$(build.artifactstagingdirectory)'
+          ArtifactName: drop
+        condition: succeededOrFailed()
+  - stage: publish_artifacts
+    displayName: "Stage - Publish Artifacts"
+    jobs:
+    - job: publish_artifacts
+      steps:
+        - download : current 
+          artifact: drop
+        - bash: ls -lt $(Pipeline.Workspace)/drop

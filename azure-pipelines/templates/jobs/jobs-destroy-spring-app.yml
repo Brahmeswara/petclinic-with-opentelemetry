@@ -1,0 +1,32 @@
+parameters:
+  - name : jobName
+    type : string 
+  - name : dependsOn
+    type : object
+  - name : ignoreError
+    type : boolean 
+  - name : serviceConnection
+    type : string 
+  - name : resourceGroupName
+    type : string
+  - name : appName
+    type : string
+  - name : springAppServiceName
+    type : string
+
+
+jobs:
+  - job: ${{parameters.jobName}}
+    displayName: "Job: Destroy Spring App - ${{parameters.jobName}}"
+    dependsOn: ${{parameters.dependson}}
+    #condition: always()
+    continueOnError: ${{parameters.ignoreError}}
+    steps:
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo 'Destroying Spring App -- ${{parameters.appName}} in rg  ${{parameters.resourceGroupName}}'
+          az spring app delete -n ${{parameters.appName}} -g ${{parameters.resourceGroupName}} -s ${{parameters.springAppServiceName}}

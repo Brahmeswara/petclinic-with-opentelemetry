@@ -1,0 +1,22 @@
+# Deploy Petclinic Spring App Template
+parameters:
+  - name : stageName
+    type : string
+  - name : dependson 
+    type : object
+    
+stages:
+- stage: ${{parameters.stageName}}
+  displayName: "Stage: Run Test Cases ${{parameters.stageName}}"
+  dependsOn: ${{parameters.dependson}}
+  condition: not(or(failed(), canceled()))
+  jobs:
+    - job : execute_integration_tests
+      displayName: "job: Integration Test Cases"
+      steps:
+      - bash : |
+          echo "Starting Running Inegration Tests"
+          sleep 180
+          echo "Completed Running Integration Tests"
+ 
+

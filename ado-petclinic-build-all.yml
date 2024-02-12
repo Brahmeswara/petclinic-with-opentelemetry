@@ -1,0 +1,75 @@
+# A pipeline to build a mono-repo of Spring Cloud microservice.
+# Includes the user of a secure `settings.xml` file to enable Azure Artifacts,
+# and downloading of secrets from Azure KeyVault.
+
+# https://aka.ms/yaml
+
+name: Build on Azure Pipelines
+
+# brahm - modified for demo
+##trigger: none
+###  branches:
+###    include:
+###    - azure
+
+trigger:
+  branches:
+    include:
+      - azure
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+
+- task: SonarQubePrepare@5
+  inputs:
+    SonarQube: 'SonarQube'
+    scannerMode: 'Other'
+    extraProperties: |
+      # Additional properties that will be passed to the scanner,
+      # Put one key=value per line, example:
+      # sonar.exclusions=**/*.bin
+      sonar.projectKey=SpringFX_PetClinic_AYsbBdSp9DFQ1ErvW0dA
+
+- task: JavaToolInstaller@0
+  inputs:
+    versionSpec: '17'
+    jdkArchitectureOption: 'x64'
+    jdkSourceOption: 'PreInstalled'
+- task: Maven@3
+  inputs:
+    options: -Denv=cloud
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.17'
+    jdkArchitectureOption: 'x64'
+    mavenVersionOption: 'Default'
+    mavenAuthenticateFeed: false
+    effectivePomSkip: false
+    codeCoverageToolOption: JaCoCo
+    sonarQubeRunAnalysis: true
+    isJacocoCoverageReportXML: true
+    sqMavenPluginVersionChoice: 'latest'
+    goals: '-q clean package'
+
+- task: SonarQubePublish@5
+  inputs:
+    pollingTimeoutSec: '300'
+
+
+- task: CopyFiles@2
+  name: copyjars
+  displayName: Copy built artifacts to staging directory
+  inputs:
+    sourceFolder: '$(Build.SourcesDirectory)'
+    contents: '**/target/*.jar'
+    flattenFolders: true
+    targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'build'
+    publishLocation: 'Container'

@@ -1,0 +1,77 @@
+# ADO Pipeline
+name: Azure Springs Apps LZA Deployment
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-DEV-ENVIRONMENT
+
+#resources:
+#  pipelines:
+#  - pipeline : build_visits_service_dev
+#    source  : build-vists-service-dev
+#    trigger : true
+
+#resources:
+#  pipelines:
+#  - pipeline: aUniqueNameHereForLocalReferenceCanBeAnything
+#    project: projectNameNOTtheGUID
+#    source: nameOfTheOtherPipelineNotTheDefinitionId
+#    trigger:
+
+
+stages:
+  - template: "templates/stages/stage-deploy-asa.yml"
+    parameters:
+        stageName: deploy_appservice
+        dependson: []
+        serviceConnection: 'JB'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        location : $(location)
+
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_api_gateway
+        dependson: [deploy_appservice]
+        skipAppService : false
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '51'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "vists-service-$(namePrefix)"
+        targetArtifact: "spring-petclinic-visits-service/target/visits-service-3.0.1.jar"
+
+  - template: "templates/stages/stage-run-integration-tests.yml"
+    parameters:
+      stageName: run_integration_tests
+      dependson: [deploy_api_gateway]     
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+        stageName: destroy_api_gateway
+        dependson: [run_integration_tests]
+        serviceConnection: 'JB'
+        skipAppService : false
+        ephemeral : true
+        appName : "visits-service-$(namePrefix)"
+        resourceGroupName : $(resourceGroupName)
+        springAppName : $(springAppName)
+
+  - template: "templates/stages/stage-destroy-appservice.yml"
+    parameters:
+        stageName: destroy_appservice
+        dependson: [destroy_api_gateway]
+        skipAppService : false
+        ephemeral : true
+        serviceConnection: 'JB'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)

@@ -1,0 +1,47 @@
+parameters:
+  - name : jobName
+    type : string 
+  - name : dependsOn
+    type : object
+  - name : ignoreError
+    type : boolean 
+  - name : serviceConnection
+    type : string 
+  - name : resourceGroupName
+    type : string
+  - name : springAppServiceName
+    type : string
+  - name : skipAppService
+    type : boolean
+  
+
+jobs:
+  - job: ${{parameters.jobName}}
+    displayName: "Job: Create Spring App Servie - ${{parameters.jobName}}"
+    dependsOn: ${{parameters.dependson}}
+    condition: eq('${{ parameters.skipAppService }}', false)
+    steps:
+    - task: AzureCLI@2
+      displayName: Install Azure CLI Spring Extension
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptLocation: inlineScript
+        scriptType: bash
+        inlineScript: |
+          set -eu
+          az extension add --name spring -y
+          az spring list -o table
+        addSpnToEnvironment: true 
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo 'Creating Spring App service -- ${{parameters.springAppServiceName}}'
+          az spring create \
+            --name ${{parameters.springAppServiceName}} \
+            --resource-group ${{parameters.resourceGroupName}} 
+          echo "Created Resource..."
+
+#    - ${{ if eq(parameters.skipAppService, 'false') }}: 

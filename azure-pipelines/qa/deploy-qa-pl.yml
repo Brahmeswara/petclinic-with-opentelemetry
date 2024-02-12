@@ -1,0 +1,207 @@
+# Deploy PC spring app to QA env
+name: Deploy PC spring App to QA WNV
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-QA-ENVIRONMENT
+
+
+#resources:
+#  pipelines:
+#  - pipeline : deployapigateway
+#    source  : deploy-api-gateway-dev
+#    trigger : true
+
+#resources:
+#  pipelines:
+#  - pipeline : deploycustomersservice
+#    source  : deploy-customers-service-dev
+#    trigger : true
+
+#resources:
+#  pipelines:
+#  - pipeline : deployvisitsservice
+#    source  : deploy-visits-service-dev
+#    trigger : true
+
+#resources:
+#  pipelines:
+#  - pipeline : deployvetsservice
+#    source  : deploy-vets-service-dev
+#    trigger : true
+
+stages:
+  - stage : approve_qa_release
+    displayName : "Review and Approve to Deploy to QA Environment"
+    jobs:
+    - deployment : qa_release 
+      environment : qa
+
+  - template: "templates/stages/stage-deploy-asa.yml"
+    parameters:
+        stageName: deploy_appservice
+        dependson: [approve_qa_release]
+        serviceConnection: 'JB'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        location : $(location)
+
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_api_gateway
+        dependson: [deploy_appservice]
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '44'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "api-gateway-$(namePrefix)"
+        targetArtifact: "spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar"
+
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_customers_service
+        dependson: [deploy_appservice]
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '45'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "customers-service-$(namePrefix)"
+        targetArtifact: "spring-petclinic-customers-service/target/customers-service-3.0.1.jar"
+  
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_vets_service
+        dependson: [deploy_appservice]
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '52'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "vets-service-$(namePrefix)"
+        targetArtifact: "spring-petclinic-vets-service/target/vets-service-3.0.1.jar"
+
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_visits_service
+        dependson: [deploy_appservice]
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '51'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "visits-service-$(namePrefix)"
+        targetArtifact: "spring-petclinic-visits-service/target/visits-service-3.0.1.jar"
+
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_admin_server
+        dependson: [deploy_appservice]
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '53'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "admin-server-$(namePrefix)"
+        targetArtifact: "spring-petclinic-admin-server/target/admin-server-3.0.1.jar"
+ 
+  - template: "templates/stages/stage-run-integration-tests.yml"
+    parameters:
+      stageName: run_integration_tests
+      dependson: [deploy_api_gateway, deploy_customers_service]     
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+        stageName: destroy_api_gateway
+        dependson: [run_integration_tests]
+        skipAppService : true 
+        ephemeral : true
+        serviceConnection: 'JB'
+        appName : "api-gateway-$(namePrefix)"
+        resourceGroupName : $(resourceGroupName)
+        springAppName : $(springAppName)
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+        stageName: destroy_customers_service
+        dependson: [run_integration_tests]
+        skipAppService : true
+        ephemeral : true
+        serviceConnection: 'JB'
+        resourceGroupName : $(resourceGroupName)
+        springAppName : $(springAppName)
+        appName : "customers-service-$(namePrefix)"
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+        stageName: destroy_vets_service
+        dependson: [run_integration_tests]
+        skipAppService : true
+        ephemeral : true
+        serviceConnection: 'JB'
+        resourceGroupName : $(resourceGroupName)
+        springAppName : $(springAppName)
+        appName : "vets-service-$(namePrefix)"
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+      stageName: destroy_vists_service
+      dependson: [run_integration_tests]
+      skipAppService : true
+      ephemeral : true
+      serviceConnection: 'JB'
+      resourceGroupName : $(resourceGroupName)
+      springAppName : $(springAppName)
+      appName : "visits-service-$(namePrefix)"
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+      stageName: destroy_admin_server
+      dependson: [run_integration_tests]
+      skipAppService : true
+      ephemeral : true
+      serviceConnection: 'JB'
+      resourceGroupName : $(resourceGroupName)
+      springAppName : $(springAppName)
+      appName : "admin-server-$(namePrefix)"
+
+#  - template: "templates/stages/stage-destroy-appservice.yml"
+#    parameters:
+#        stageName: destroy_appservice
+#        dependson: [destroy_api_gateway, destroy_customers_service]
+#        skipAppService : true 
+#        ephemeral : true
+#        serviceConnection: 'JB'
+#        resourceGroupName : $(resourceGroupName) 
+#        springAppName : $(springAppName)
+

@@ -1,0 +1,22 @@
+# Demo build pipeline for api-gateway
+
+trigger:
+  branches:
+    include:
+    - azure
+  paths:
+    include:
+    - spring-petclinic-customers-service/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - template : templates/stages/stage-build-unit-test-publish.yml
+    parameters :
+      stageName : build_customers_service
+      pomPath : "pom.xml"
+      buildGoals : '--pl spring-petclinic-customers-service  -Dmaven.test.skip=true clean install'
+      jdkVersion : '1.17'
+      unitTestGoals : '--pl spring-petclinic-customers-service  -DfailIfNoTests=false test'
+      unitTestRunTitleName : "unit test results"

@@ -1,0 +1,33 @@
+# Destory Petclinic Spring App Template
+parameters:
+  - name : stageName
+    type : string
+  - name : dependson
+    type : object
+  - name : serviceConnection
+    type : string
+  - name : resourceGroupName
+    type : string
+  - name : springAppName 
+    type:  string
+  - name : skipAppService 
+    type : boolean
+  - name : ephemeral
+    type : boolean 
+
+stages:
+- stage: ${{parameters.stageName}}
+  displayName: "Stage: Destroy Spring App Service ${{parameters.springAppName}}"
+  dependsOn: ${{parameters.dependson}}
+  #condition: not(or(failed(), canceled()))
+  condition : eq('${{ parameters.ephemeral }}', true)
+  jobs:
+    - template: ../jobs/jobs-destroy-spring-appservice.yml
+      parameters:
+        jobName: "destroy_spring_service"
+        dependson: []
+        ignoreError: false
+        skipAppService : ${{parameters.skipAppService}}
+        serviceConnection: ${{parameters.serviceConnection}}
+        resourceGroupName: ${{parameters.resourceGroupName}}
+        springAppServiceName: ${{parameters.springAppName}}

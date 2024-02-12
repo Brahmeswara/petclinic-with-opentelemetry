@@ -1,0 +1,45 @@
+parameters:
+  - name : jobName
+    type : string 
+  - name : dependsOn
+    type : object
+  - name : serviceConnection
+    type : string 
+  - name : resourceGroupName
+    type : string
+  - name : springAppServiceName
+    type : string
+  - name : location
+    type : string
+
+  
+
+jobs:
+  - job: ${{parameters.jobName}}
+    displayName: "Job: Create Spring App Servie - ${{parameters.jobName}}"
+    dependsOn: ${{parameters.dependson}}
+    steps:
+    - task: AzureCLI@2
+      displayName: Install Azure CLI Spring Extension
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptLocation: inlineScript
+        scriptType: bash
+        inlineScript: |
+          set -eu
+          az extension add --name spring -y
+          az spring list -o table
+        addSpnToEnvironment: true 
+    - task: AzureCLI@2
+      displayName : 'create asa instance'
+      inputs:
+        azureSubscription: ${{parameters.serviceConnection}}
+        scriptType: "bash"
+        scriptLocation: "inlineScript"
+        inlineScript: |
+          echo 'Creating ASA -- ${{parameters.springAppServiceName}}'
+          az deployment sub create --name 'create-asa' --location=${{parameters.location}} \
+            --template-file 'azure-pipelines/iac/asa.bicep'  \
+            --parameters location=${{parameters.location}} resourceGroupName=${{parameters.resourceGroupName}}  \
+            asaInstanceName=${{parameters.springAppServiceName}}
+        #workingDirectory: ${{parameters.workingDirectory}}

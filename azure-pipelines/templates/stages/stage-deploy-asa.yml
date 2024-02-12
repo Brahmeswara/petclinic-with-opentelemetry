@@ -1,0 +1,30 @@
+# Deploy Petclinic Spring App Template
+parameters:
+  - name : stageName
+    type : string
+  - name : dependson
+    type : object
+  - name : serviceConnection
+    type : string
+  - name : resourceGroupName
+    type : string
+  - name : springAppName 
+    type: string
+  - name : location
+    type : string
+
+
+stages:
+- stage: ${{parameters.stageName}}
+  displayName: "Stage: Deploy Spring App service ${{parameters.springAppName}}"
+  dependsOn: ${{parameters.dependson}}
+  #condition: not(or(failed(), canceled()))
+  jobs:
+    - template: ../jobs/jobs-create-asa.yml
+      parameters:
+        jobName: "create_springappservice"
+        dependson: []
+        serviceConnection: ${{parameters.serviceConnection}}
+        resourceGroupName: ${{parameters.resourceGroupName}}
+        springAppServiceName: ${{parameters.springAppName}}
+        location : ${{parameters.location}}

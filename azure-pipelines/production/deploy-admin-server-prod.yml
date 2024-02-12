@@ -1,0 +1,88 @@
+# Deploy PC spring app to QA env
+name: Deploy admin-server app to production
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-PROD-ENVIRONMENT
+
+
+#resources:
+#  pipelines:
+#  - pipeline : deploytoqa
+#    source  : deploy-qa-pl
+#    trigger : true
+
+stages:
+  - stage : approve_prod_release
+    displayName : "Deploy to Staging "
+    jobs:
+    - deployment : staging_release 
+      environment : staging
+
+  - template: "../templates/stages/stage-deploy-spring-app-prod.yml"
+    parameters:
+        stageName: deploy_admin_server
+        dependson: [approve_prod_release]
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '53'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "admin-server"
+        targetArtifact: "spring-petclinic-admin-server/target/admin-server-3.0.1.jar"
+
+
+  - template: "../templates/stages/stage-run-integration-tests.yml"
+    parameters:
+      stageName: run_sanity_tests
+      dependson: [deploy_admin_server]    
+
+  - stage: PreDeploy
+    displayName : "PreDeploy Manual Validation.."
+    dependsOn: [run_sanity_tests]
+    jobs:
+      - job : predeploy_message
+        displayName: "job: PreDeploy Manual Validation"
+        steps:
+        - bash : |
+            echo "Sent Manual Validation message for approval"
+            sleep 10
+            echo "Completed"
+      - job: ValidateStaging
+        displayName: Wait for Staging Validation
+        dependsOn: []
+        pool: server
+        timeoutInMinutes: 4320 # 3 days
+        steps:
+        - task: ManualValidation@0
+          timeoutInMinutes: 2880 # 2 days
+          inputs:
+            instructions: 'Validate Staging Deployment'
+            notifyUsers: 'brahmeswara.y@mphasis.com'
+            onTimeout: reject 
+
+  - stage: switch_staging_to_prod
+    displayName: "B/G Deployment: Switching Staging to Production"
+    dependsOn: [PreDeploy]
+    jobs:
+      - job: switchToProduction
+        displayName : Switch to switchToProduction
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: $(serviceConnection)
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                echo "Switching staging to production"
+                az spring app set-deployment -d staging -n admin-server  -g $(resourceGroupName) -s $(springAppName)
+

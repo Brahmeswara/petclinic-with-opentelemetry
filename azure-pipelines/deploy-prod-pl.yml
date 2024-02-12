@@ -1,0 +1,104 @@
+# Deploy PC spring app to QA env
+name: Deploy PC spring App to PROD ENV
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-PROD-ENVIRONMENT
+
+
+#resources:
+#  pipelines:
+#  - pipeline : deployapigateway
+#    source  : deploy-pc-api-gateway-dev-v2
+#    trigger : true
+
+stages:
+#  - stage : approve_qa_release
+#    displayName : "Deploy to Stating Environment"
+#    jobs:
+#    - deployment : staging_release 
+#      environment : staging
+
+#  - template: "templates/stages/stage-deploy-appservice.yml"
+#    parameters:
+#        stageName: deploy_appservice
+#        dependson: []
+#        skipAppService : true
+#        serviceConnection: 'JB'
+#        resourceGroupName : $(resourceGroupName) 
+#        springAppName : $(springAppName)
+
+  - template: "templates/stages/stage-deploy-spring-app-prod.yml"
+    parameters:
+        stageName: deploy_api_gateway
+        dependson: []
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '44'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "api-gateway"
+        targetArtifact: "spring-petclinic-api-gateway/target/api-gateway-3.0.1.jar"
+
+  - template: "templates/stages/stage-deploy-spring-app-prod.yml"
+    parameters:
+        stageName: deploy_customers_service
+        dependson: []
+        skipAppService : true
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '45'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "customers-service"
+        targetArtifact: "spring-petclinic-customers-service/target/customers-service-3.0.1.jar"
+
+  - template: "templates/stages/stage-run-integration-tests.yml"
+    parameters:
+      stageName: run_sanity_tests
+      dependson: [deploy_api_gateway, deploy_customers_service]     
+
+#  - template: "templates/stages/stage-destroy-spring-app.yml"
+#    parameters:
+#        stageName: destroy_api_gateway
+#        dependson: [run_integration_tests]
+#        skipAppService : true 
+#        ephemeral : true
+#        serviceConnection: 'JB'
+#        appName : "api-gateway-$(namePrefix)"
+#        resourceGroupName : $(resourceGroupName)
+#        springAppName : $(springAppName)
+
+#  - template: "templates/stages/stage-destroy-spring-app.yml"
+#    parameters:
+#        stageName: destroy_customers_service
+#        dependson: [run_integration_tests]
+#        skipAppService : true
+#        ephemeral : true
+#        serviceConnection: 'JB'
+#        resourceGroupName : $(resourceGroupName)
+#        springAppName : $(springAppName)
+#        appName : "customers-service-$(namePrefix)"
+
+#  - template: "templates/stages/stage-destroy-appservice.yml"
+#    parameters:
+#        stageName: destroy_appservice
+#        dependson: [destroy_api_gateway, destroy_customers_service]
+#        skipAppService : true 
+#        ephemeral : true
+#        serviceConnection: 'JB'
+#        resourceGroupName : $(resourceGroupName) 
+#        springAppName : $(springAppName)

@@ -1,0 +1,45 @@
+# Deploy PC spring app to QA env
+name: Deploy PC spring App to QA WNV
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-PROD-ENVIRONMENT
+
+#resources:
+#  pipelines:
+#  - pipeline : deploy_qa_pc
+#    source  : deploy-pc-api-gateway-dev-v2
+#    trigger : true
+
+stages:
+#  - stage : approve_qa_release
+#    displayName : "Deploy to QA Environment"
+#    jobs:
+#    - deployment : qa_release 
+#      environment : qa
+
+  - stage: test_cli_commands
+    displayName: "Stage: Run CLI Commands"
+    dependsOn: []
+    jobs:
+    - job: test_bicep
+      displayName: "Job: Run CLI command"
+      dependsOn: []
+      steps:
+        - task: AzureCLI@2
+          displayName : 'create SP'
+          inputs:
+            azureSubscription: 'JB'
+            scriptType: "bash"
+            scriptLocation: "inlineScript"
+            #workingDirectory: azure-pipelines
+            inlineScript: |
+                echo 'Creating Service Principal'
+                az ad sp create-for-rbac --name Orpheus --role Contributor --scopes /subscriptions/6e977b0d-998c-42d7-97ed-dd70040cff12/resourceGroups/rg_fedex_west_us
+                echo "Done..."
+
+ 

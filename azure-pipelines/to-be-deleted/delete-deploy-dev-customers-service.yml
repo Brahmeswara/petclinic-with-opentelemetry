@@ -1,0 +1,41 @@
+# ADO Pipeline
+name: Azure Springs Apps LZA Deployment
+
+trigger: none
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  - group: PC-SPRING-APP-DEV-ENVIRONMENT
+
+stages:
+  - template: "templates/stages/stage-deploy-spring-app.yml"
+    parameters:
+        stageName: deploy_customers_service
+        dependson: []
+        serviceConnection: 'JB'
+        namePrefix: $(namePrefix)
+        buildType: 'specific'
+        projectId: 'adc249cd-7a87-42f8-8e35-2da681ea24cf'
+        definitionId: '45'
+        buildVersionToDownload: 'latest'
+        artifactName: 'drop'
+        resourceGroupName : $(resourceGroupName) 
+        springAppName : $(springAppName)
+        appName : "customers-service-$(namePrefix)"
+        targetArtifact: "spring-petclinic-api-gateway/target/customers-service-3.0.1.jar"
+
+  - template: "templates/stages/stage-run-integration-tests.yml"
+    parameters:
+      stageName: run_integration_tests
+      dependson: [deploy_api_gateway]     
+
+  - template: "templates/stages/stage-destroy-spring-app.yml"
+    parameters:
+        stageName: destroy_customers_service
+        dependson: [run_integration_tests]
+        serviceConnection: 'JB'
+        resourceGroupName : $(resourceGroupName)
+        springAppName : $(springAppName)
+        appName : "customers-service-$(namePrefix)"

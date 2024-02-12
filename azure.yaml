@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: spring-petclinic-microservices
+metadata:
+  template: spring-petclinic-microservices@0.0.1-beta
+hooks:
+  preprovision:
+    posix:
+      shell: sh
+      run: ./mvnw clean install -N
+    windows:
+      shell: pwsh
+      run: ./mvnw.cmd clean install -N
+services:
+  api-gateway:
+    project: ./spring-petclinic-api-gateway
+    host: springapp
+    language: java
+    resourceName: ${ASA_INSTANCE_NAME}
+    spring:
+      deploymentName: default
+  admin-server:
+    project: ./spring-petclinic-admin-server
+    host: springapp
+    language: java
+    resourceName: ${ASA_INSTANCE_NAME}
+    spring:
+      deploymentName: default
+  customers-service:
+    project: ./spring-petclinic-customers-service
+    host: springapp
+    language: java
+    resourceName: ${ASA_INSTANCE_NAME}
+    spring:
+      deploymentName: default
+  vets-service:
+    project: ./spring-petclinic-vets-service
+    host: springapp
+    language: java
+    resourceName: ${ASA_INSTANCE_NAME}
+    spring:
+      deploymentName: default
+  visits-service:
+    project: ./spring-petclinic-visits-service
+    host: springapp
+    language: java
+    resourceName: ${ASA_INSTANCE_NAME}
+    spring:
+      deploymentName: default
