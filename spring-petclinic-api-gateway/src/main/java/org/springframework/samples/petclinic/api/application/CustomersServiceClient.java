@@ -40,6 +40,7 @@ public class CustomersServiceClient {
     private Tracer tracer ;
 
     public Mono<OwnerDetails> getOwner(final int ownerId) {
+        /** 
         Span span = tracer.spanBuilder("owners/ownerId").startSpan();
         try (Scope scope = span.makeCurrent()) {
             return webClientBuilder.build().get()
@@ -52,12 +53,13 @@ public class CustomersServiceClient {
         } finally {
             span.end();
         }
-        /** 
+        */
+        
         return webClientBuilder.build().get()
             .uri("http://customers-service/owners/{ownerId}", ownerId)
             .retrieve()
             .bodyToMono(OwnerDetails.class);
-        */
+        
 
     }
 }

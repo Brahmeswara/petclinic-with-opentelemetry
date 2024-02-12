@@ -57,14 +57,14 @@ public class ApiGatewayController {
     private final ReactiveCircuitBreakerFactory cbFactory;
 
   
-    @Autowired
-    private Tracer tracer ;
+    // @Autowired
+    // private Tracer tracer ;
     
      @GetMapping(value = "owners/{ownerId}")
      public Mono<OwnerDetails> getOwnerDetails(final @PathVariable int ownerId) {
 
-        Span span = tracer.spanBuilder("getOwnerDetails").startSpan();
-        try (Scope scope = span.makeCurrent()) {
+        // Span span = tracer.spanBuilder("getOwnerDetails").startSpan();
+        // try (Scope scope = span.makeCurrent()) {
          return customersServiceClient.getOwner(ownerId)
              .flatMap(owner ->
                  visitsServiceClient.getVisitsForPets(owner.getPetIds())
@@ -74,17 +74,18 @@ public class ApiGatewayController {
                      })
                      .map(addVisitsToOwner(owner))
              );
-        } catch (Exception e) {
-            span.recordException(e);
-            throw e;
-        } finally {
-            span.end();
-        }
+        // } catch (Exception e) {
+        //    span.recordException(e);
+        //    throw e;
+        // } finally {
+        //    span.end();
+        // }
  
      }
  
 
     private Function<Visits, OwnerDetails> addVisitsToOwner(OwnerDetails owner) {
+        /** 
         Span span = tracer.spanBuilder("addVisitsToOwner").startSpan();
         try (Scope scope = span.makeCurrent()) {
             return visits -> {
@@ -100,9 +101,10 @@ public class ApiGatewayController {
             span.recordException(e);
             throw e;
         } finally {
-            span.end();
+           span.end();
         }
-        /** 
+        */
+
         return visits -> {
             owner.getPets()
                 .forEach(pet -> pet.getVisits()
@@ -112,7 +114,6 @@ public class ApiGatewayController {
                 );
             return owner;
         };
-        */
     }
 
     private Mono<Visits> emptyVisitsForPets() {

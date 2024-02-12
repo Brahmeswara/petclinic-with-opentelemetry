@@ -47,6 +47,7 @@ public class VisitsServiceClient {
     private Tracer tracer ;
 
     public Mono<Visits> getVisitsForPets(final List<Integer> petIds) {
+        /** 
         Span span = tracer.spanBuilder("visits/perId").startSpan();
         try (Scope scope = span.makeCurrent()) {
             return webClientBuilder.build()
@@ -60,13 +61,15 @@ public class VisitsServiceClient {
         } finally {
             span.end();
         }
-        /** 
+        */
+
+        
         return webClientBuilder.build()
             .get()
             .uri(hostname + "pets/visits?petId={petId}", joinIds(petIds))
             .retrieve()
             .bodyToMono(Visits.class);
-        */
+        
     }
 
     private String joinIds(List<Integer> petIds) {
